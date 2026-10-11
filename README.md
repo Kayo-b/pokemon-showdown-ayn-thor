@@ -16,12 +16,18 @@ It plays on the official server (`play.pokemonshowdown.com`) by default; the ser
 
 ### Install on the AYN Thor
 
-1. Build the APK (JDK 17 + Android SDK 35): `cd ayn-thor && ./gradlew assembleRelease`
-   → `ayn-thor/app/build/outputs/apk/release/app-release.apk`
-2. Copy the APK to the Thor and open it from a file manager, allowing "Install unknown apps" when asked; or, with USB
-   debugging on (Settings → About → tap Build number 7 times → Developer options → USB debugging):
-   `adb install -r ayn-thor/app/build/outputs/apk/release/app-release.apk`
+1. On the Thor, open the [latest release](https://github.com/Kayo-b/pokemon-showdown-ayn-thor/releases/latest) and
+   download the APK under **Assets** (e.g. `ShowdownThor-v1.0.apk`).
+2. Open the downloaded file (from the browser's downloads or a file manager) and allow **Install unknown apps** for
+   that app when Android asks.
 3. Launch **Showdown Thor** from the top screen. The battle panel opens on the bottom screen automatically.
+
+Alternatively, install from a PC with USB debugging on (Settings → About → tap Build number 7 times → Developer
+options → USB debugging): `adb install -r ShowdownThor-v1.0.apk`
+
+To build the APK yourself instead (JDK 17 and the Android SDK 35; point Gradle at the SDK with `ANDROID_HOME` or an
+`ayn-thor/local.properties` containing `sdk.dir=/path/to/Android/Sdk`):
+`cd ayn-thor && JAVA_HOME=/path/to/jdk17 ./gradlew assembleRelease` → `ayn-thor/app/build/outputs/apk/release/app-release.apk`
 
 See [`ayn-thor/README.md`](ayn-thor/README.md) for the full control list and settings.
 

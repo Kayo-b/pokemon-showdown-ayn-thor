@@ -6,19 +6,24 @@ gamepad-friendly battle panel on the bottom screen, and complete gamepad control
 
 ## Install
 
-```
-adb install -r app/build/outputs/apk/release/app-release.apk
-```
+Download the APK from the [latest release](https://github.com/Kayo-b/pokemon-showdown-ayn-thor/releases/latest)
+(under **Assets**), open it on the Thor and allow **Install unknown apps** when asked. Or, from a PC with USB
+debugging enabled:
 
-(or copy the APK to the device and open it; allow "install unknown apps").
+```
+adb install -r ShowdownThor-v1.0.apk
+```
 
 ## Build
 
-Requires JDK 17 and the Android SDK (platform 35).
+Requires JDK 17 (newer JDKs are not supported by this Gradle version) and the Android SDK (platform 35). Point
+Gradle at the SDK with `ANDROID_HOME`, or create `local.properties` here containing `sdk.dir=/path/to/Android/Sdk`.
 
 ```
 JAVA_HOME=/path/to/jdk17 ./gradlew assembleRelease
 ```
+
+The APK is written to `app/build/outputs/apk/release/app-release.apk`.
 
 ## Screens
 
