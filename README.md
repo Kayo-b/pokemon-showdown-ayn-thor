@@ -1,3 +1,31 @@
+AYN Thor edition
+========================================================================
+
+This fork adds **Showdown Thor** ([`ayn-thor/`](ayn-thor/)), an Android app for playing
+Pokémon Showdown on the **AYN Thor** dual-screen handheld with its built-in gamepad:
+
+- **Top screen:** the official Showdown client. During a battle it shows only the battle scene, scaled up to fill the
+  screen; X (or the panel's "Log" button) pops up an overlay with the tabs, battle log/chat and controls. Ads are blocked.
+- **Bottom screen:** a battle panel with your moves (type, power, accuracy, effectiveness), switches, targets,
+  Tera/Mega/Z/Dynamax, team preview, timer and forfeit. In the teambuilder it previews the Pokémon, move, item or
+  ability under the highlight.
+- **Gamepad:** everything is reachable with the D-pad and buttons; Select moves control between the screens, Start opens
+  the app menu.
+
+It plays on the official server (`play.pokemonshowdown.com`) by default; the server code in this repository is unchanged.
+
+### Install on the AYN Thor
+
+1. Build the APK (JDK 17 + Android SDK 35): `cd ayn-thor && ./gradlew assembleRelease`
+   → `ayn-thor/app/build/outputs/apk/release/app-release.apk`
+2. Copy the APK to the Thor and open it from a file manager, allowing "Install unknown apps" when asked; or, with USB
+   debugging on (Settings → About → tap Build number 7 times → Developer options → USB debugging):
+   `adb install -r ayn-thor/app/build/outputs/apk/release/app-release.apk`
+3. Launch **Showdown Thor** from the top screen. The battle panel opens on the bottom screen automatically.
+
+See [`ayn-thor/README.md`](ayn-thor/README.md) for the full control list and settings.
+
+
 Pokémon Showdown
 ========================================================================
 

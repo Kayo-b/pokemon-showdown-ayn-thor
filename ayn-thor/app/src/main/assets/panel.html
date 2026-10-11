@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Battle Panel</title>
+<style>
+:root {
+	--bg: #0f1522;
+	--card: #1b2436;
+	--card2: #243049;
+	--line: #33415e;
+	--text: #e8ecf5;
+	--dim: #8e9ab3;
+	--accent: #ffd23f;
+	--good: #4cd07d;
+	--bad: #ff6b6b;
+	--warn: #ffb347;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); overflow: hidden; }
+body {
+	font: 15px/1.25 system-ui, -apple-system, Roboto, sans-serif;
+	user-select: none;
+	border: 3px solid transparent;
+	transition: border-color .15s;
+}
+body.active { border-color: rgba(255, 210, 63, .7); }
+#app { display: flex; flex-direction: column; height: 100%; padding: 8px; gap: 8px; }
+button {
+	font: inherit; color: inherit; background: var(--card); border: 1px solid var(--line);
+	border-radius: 10px; padding: 8px 10px; cursor: pointer; min-height: 40px;
+}
+button:active { filter: brightness(1.3); }
+button[disabled] { opacity: .35; }
+button.primary { background: #2f4f8f; border-color: #4a6fbf; }
+button.danger { background: #6b2430; border-color: #a33a4c; }
+button.on { background: #6b5a12; border-color: var(--accent); color: #fff; }
+.thor-focus { outline: 3px solid var(--accent) !important; outline-offset: 1px; box-shadow: 0 0 0 5px rgba(255, 210, 63, .35); }
+body:not(.active) .thor-focus { outline-color: rgba(255, 210, 63, .3) !important; box-shadow: none; }
+
+.tabs { display: flex; gap: 6px; overflow-x: auto; flex: none; scrollbar-width: none; }
+.tabs button { min-height: 32px; padding: 4px 10px; font-size: 13px; white-space: nowrap; }
+.tabs button.cur { border-color: var(--accent); background: var(--card2); }
+.tabs .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--warn); margin-right: 6px; }
+
+.header { display: flex; align-items: center; gap: 8px; flex: none; color: var(--dim); font-size: 13px; }
+.header .title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.header .turn { color: var(--text); font-weight: 600; }
+
+.field { display: flex; gap: 8px; flex: none; }
+.mon { flex: 1; min-width: 0; background: var(--card); border-radius: 10px; padding: 6px 8px; display: flex; gap: 6px; align-items: center; }
+.mon.foe { background: #2a1d26; }
+.mon .info { flex: 1; min-width: 0; }
+.mon .name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 14px; }
+.mon .sub { font-size: 11px; color: var(--dim); display: flex; gap: 4px; align-items: center; flex-wrap: wrap; }
+.hpbar { height: 7px; background: #0b0f18; border-radius: 4px; overflow: hidden; margin: 3px 0 2px; }
+.hpbar > div { height: 100%; background: var(--good); }
+.hpbar.mid > div { background: #f5c542; }
+.hpbar.low > div { background: var(--bad); }
+.icon { width: 40px; height: 30px; flex: none; image-rendering: pixelated; zoom: 1.3; }
+.status { font-size: 10px; font-weight: 700; padding: 1px 4px; border-radius: 4px; color: #fff; text-transform: uppercase; }
+.status.brn { background: #e2583e; } .status.par { background: #c8a92a; } .status.psn, .status.tox { background: #a04fbd; }
+.status.slp { background: #8a8a8a; } .status.frz { background: #4fb5d9; } .status.fnt { background: #444; }
+.type { font-size: 10px; font-weight: 700; padding: 1px 5px; border-radius: 4px; color: #fff; text-shadow: 0 1px 1px rgba(0,0,0,.4); }
+
+.main { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 8px; }
+.prompt { font-size: 13px; color: var(--dim); flex: none; display: flex; justify-content: space-between; gap: 8px; }
+.prompt b { color: var(--text); }
+.error { background: #4a1f27; border: 1px solid #8a3341; color: #ffd0d6; border-radius: 8px; padding: 6px 8px; font-size: 13px; flex: none; }
+
+.moves { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; grid-auto-rows: 1fr; gap: 8px; }
+.move { text-align: left; display: flex; flex-direction: column; justify-content: space-between; padding: 8px 10px; border-width: 2px; position: relative; }
+.move .mname { font-weight: 700; font-size: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.move .mrow { display: flex; justify-content: space-between; align-items: center; font-size: 12px; gap: 6px; }
+.move .pp { opacity: .9; }
+.move .eff { font-size: 11px; font-weight: 700; padding: 1px 5px; border-radius: 4px; background: rgba(0,0,0,.35); }
+.eff.x4, .eff.x2 { color: #8dffb0; } .eff.x05, .eff.x025 { color: #ffb3b3; } .eff.x0 { color: #bbb; text-decoration: line-through; }
+
+.actions { display: flex; gap: 8px; flex: none; }
+.actions button { flex: 1; }
+
+.grid { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(3, 1fr); grid-auto-rows: 1fr; gap: 8px; }
+.pick { display: flex; align-items: center; gap: 6px; text-align: left; padding: 6px 8px; position: relative; }
+.pick .info { flex: 1; min-width: 0; }
+.pick .order { position: absolute; top: 4px; right: 6px; background: var(--accent); color: #000; font-weight: 800; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 13px; }
+.pick.isactive { border-color: #4a6fbf; }
+
+.targets { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+.targets .row { flex: 1; display: flex; gap: 8px; }
+.targets .row button { flex: 1; font-size: 16px; font-weight: 600; }
+
+.center { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center; }
+.big { font-size: 22px; font-weight: 700; }
+.foeteam { display: flex; flex-wrap: wrap; gap: 2px; justify-content: center; }
+
+.legend { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 13px; text-align: left; color: var(--dim); }
+.legend kbd { font: 700 12px system-ui; color: var(--text); background: var(--card2); border: 1px solid var(--line); border-radius: 5px; padding: 1px 6px; justify-self: end; }
+.footer { display: flex; gap: 8px; flex: none; }
+.footer button { min-height: 34px; font-size: 13px; padding: 4px 10px; }
+.footer .spacer { flex: 1; }
+.spin { width: 28px; height: 28px; border: 3px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+/* Teambuilder preview */
+.pv { flex: 1; display: flex; flex-direction: column; gap: 8px; min-height: 0; overflow: auto; }
+.pv-head { display: flex; align-items: center; gap: 12px; }
+.pv-sprite { width: 96px; height: 96px; object-fit: contain; image-rendering: auto; }
+.pv-icon { width: 24px; height: 24px; transform: scale(2); margin: 12px; flex: none; }
+.pv-name { font-size: 20px; font-weight: 700; }
+.pv-meta { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; color: var(--dim); font-size: 12px; margin-top: 4px; }
+.pv-desc { background: var(--card); border-radius: 8px; padding: 10px 12px; font-size: 13px; line-height: 1.4; }
+.pv-abil { display: flex; flex-direction: column; gap: 4px; }
+.pv-abil div { background: var(--card); border-radius: 6px; padding: 5px 8px; font-size: 12px; }
+.pv-abil b { margin-right: 6px; }
+.pv-abil i { color: var(--dim); font-style: normal; font-size: 10px; margin-right: 6px; }
+.pv-stats { display: grid; grid-template-columns: 34px 30px 1fr; gap: 3px 8px; align-items: center; font-size: 12px; }
+.pv-stats .lbl { color: var(--dim); }
+.pv-stats .val { text-align: right; font-weight: 700; }
+.pv-stats .bar { height: 8px; border-radius: 4px; }
+.pv-nums { display: flex; gap: 8px; }
+.pv-nums div { flex: 1; background: var(--card); border-radius: 6px; padding: 6px; text-align: center; font-size: 11px; color: var(--dim); }
+.pv-nums b { display: block; font-size: 16px; color: var(--text); }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script src="nav.js"></script>
+<script>
+(function () {
+	'use strict';
+
+	var TYPE_COLORS = {
+		Normal: '#9a9a6c', Fire: '#e8742f', Water: '#5a82e8', Electric: '#e3b819', Grass: '#5fb33f',
+		Ice: '#6bc3c3', Fighting: '#b02e26', Poison: '#933b93', Ground: '#cba559', Flying: '#9381e5',
+		Psychic: '#ef4f7f', Bug: '#97a520', Rock: '#a8913a', Ghost: '#6b5491', Dragon: '#6a3cf0',
+		Dark: '#6b5547', Steel: '#a5a5c2', Fairy: '#e290a7', Stellar: '#40b5a5', '???': '#5f9e8e',
+	};
+	var TARGETED = { normal: 1, any: 1, adjacentAlly: 1, adjacentFoe: 1, adjacentAllyOrSelf: 1 };
+
+	var app = document.getElementById('app');
+	var state = null;
+	var preview = null; // teambuilder result highlighted on the top screen
+	var selected = null; // room id the user picked on the panel
+	var ui = freshUI(null);
+	var forfeitArmed = 0;
+	var lastActionable = '';
+	var touched = false;
+	var lastSig = '';
+	var pendingFocus = '';
+
+	function freshUI(key) {
+		return { key: key, slot: 0, choices: [], step: 'main', gimmick: '', used: {}, pending: null, order: [] };
+	}
+
+	function post(msg) {
+		try { window.PanelBridge.post(JSON.stringify(msg)); } catch (e) { console.log('post', msg); }
+	}
+
+	/* ---------- tiny DOM helper (always textContent; names are user controlled) ---------- */
+	function h(tag, attrs) {
+		var el = document.createElement(tag);
+		if (attrs) {
+			for (var k in attrs) {
+				var v = attrs[k];
+				if (v === null || v === undefined || v === false) continue;
+				if (k === 'class') el.className = v;
+				else if (k === 'text') el.textContent = v;
+				else if (k === 'onclick') el.addEventListener('click', v);
+				else if (k === 'style') el.setAttribute('style', v);
+				else if (k === 'disabled') el.disabled = !!v;
+				else el.setAttribute(k, v);
+			}
+		}
+		for (var i = 2; i < arguments.length; i++) {
+			var c = arguments[i];
+			if (c === null || c === undefined || c === false) continue;
+			if (Array.isArray(c)) c.forEach(function (cc) { if (cc) el.appendChild(cc.nodeType ? cc : document.createTextNode(cc)); });
+			else el.appendChild(c.nodeType ? c : document.createTextNode(c));
+		}
+		return el;
+	}
+
+	function typeBadge(type) {
+		if (!type) return null;
+		return h('span', { class: 'type', style: 'background:' + (TYPE_COLORS[type] || '#666'), text: type });
+	}
+	function iconEl(style) {
+		var el = h('span', { class: 'icon' });
+		if (style && /^background:/.test(style)) el.setAttribute('style', style);
+		return el;
+	}
+	function hpBar(hp, maxhp) {
+		var pct = maxhp ? Math.max(0, Math.min(100, hp / maxhp * 100)) : 0;
+		var cls = 'hpbar' + (pct <= 20 ? ' low' : pct <= 50 ? ' mid' : '');
+		return h('div', { class: cls }, h('div', { style: 'width:' + pct.toFixed(1) + '%' }));
+	}
+	function statusBadge(p) {
+		if (p.fainted) return h('span', { class: 'status fnt', text: 'fnt' });
+		if (!p.status) return null;
+		return h('span', { class: 'status ' + p.status, text: p.status });
+	}
+	function effLabel(mult) {
+		if (mult === null || mult === undefined || mult === 1) return null;
+		var cls = mult === 0 ? 'x0' : mult >= 4 ? 'x4' : mult >= 2 ? 'x2' : mult <= 0.25 ? 'x025' : 'x05';
+		var txt = mult === 0 ? 'immune' : '×' + mult;
+		return h('span', { class: 'eff ' + cls, text: txt });
+	}
+
+	function monCard(p, foe) {
+		if (!p) return h('div', { class: 'mon' + (foe ? ' foe' : '') }, h('div', { class: 'info sub', text: 'empty' }));
+		var hpText = p.maxhp ? (foe || p.maxhp === 100 ? Math.round(p.hp / p.maxhp * 100) + '%' : p.hp + '/' + p.maxhp) : '';
+		return h('div', { class: 'mon' + (foe ? ' foe' : '') },
+			iconEl(p.icon),
+			h('div', { class: 'info' },
+				h('div', { class: 'name', text: p.name + (p.species && p.species !== p.name ? ' (' + p.species + ')' : '') }),
+				hpBar(p.hp, p.maxhp),
+				h('div', { class: 'sub' },
+					h('span', { text: hpText }), statusBadge(p),
+					(p.tera ? [typeBadge(p.tera), 'tera'] : (p.types || []).map(typeBadge)),
+					p.level && p.level !== 100 ? h('span', { text: 'L' + p.level }) : null)));
+	}
+
+	/* ---------- battle selection ---------- */
+
+	function actionable(b) {
+		return b && b.mine && !b.ended && b.request && !b.waiting && b.request.kind !== 'wait';
+	}
+
+	function currentBattle() {
+		if (!state || !state.battles || !state.battles.length) return null;
+		var list = state.battles;
+		var byId = function (id) { return list.find(function (b) { return b.id === id; }); };
+		var b = selected && byId(selected);
+		if (b) return b;
+		selected = null;
+		if (state.cur && byId(state.cur)) return byId(state.cur);
+		return list.find(actionable) || list.find(function (x) { return x.mine && !x.ended; }) || list[list.length - 1];
+	}
+
+	/* ---------- choice building ---------- */
+
+	function send(b, choiceList) {
+		post({ t: 'choose', room: b.id, choice: choiceList.join(', '), rqid: b.request.rqid });
+		ui.step = 'sent';
+		post({ t: 'release' });
+	}
+
+	function commit(b, choice) {
+		ui.choices[ui.slot] = choice;
+		ui.slot++;
+		ui.step = 'main';
+		ui.gimmick = '';
+		ui.pending = null;
+		advance(b);
+	}
+
+	/** Fill in 'pass' for slots that need no input. Returns true once every slot is decided. */
+	function skip(b) {
+		var req = b.request;
+		var slots = req.kind === 'switch' ? req.forceSwitch.length : req.active.length;
+		while (ui.slot < slots) {
+			var mon = req.team[ui.slot];
+			if (req.kind === 'switch') {
+				if (!req.forceSwitch[ui.slot] || !switchTargets(b).length) { ui.choices[ui.slot] = 'pass'; ui.slot++; continue; }
+			} else if (!mon || mon.fainted || mon.commanding) {
+				ui.choices[ui.slot] = 'pass';
+				ui.slot++;
+				continue;
+			}
+			break;
+		}
+		return ui.slot >= slots;
+	}
+
+	function advance(b) {
+		if (skip(b)) send(b, ui.choices);
+		render();
+	}
+
+	function switchTargets(b) {
+		var req = b.request;
+		var activeCount = req.kind === 'switch' ? req.forceSwitch.length : req.active.length;
+		var reviving = req.team[ui.slot] && req.team[ui.slot].reviving;
+		var taken = ui.choices.filter(function (c) { return /^switch /.test(c); }).map(function (c) { return parseInt(c.slice(7), 10); });
+		var out = [];
+		req.team.forEach(function (p, i) {
+			if (i < activeCount) return;
+			if (reviving ? !p.fainted : p.fainted) return;
+			if (taken.indexOf(i + 1) >= 0) return;
+			out.push(i);
+		});
+		return out;
+	}
+
+	function gimmicks(a) {
+		var list = [];
+		if (a.canTerastallize) list.push({ id: 'terastallize', label: 'Tera ' + a.canTerastallize, group: 'tera' });
+		if (a.canMegaEvo) list.push({ id: 'mega', label: 'Mega Evolve', group: 'mega' });
+		if (a.canMegaEvoX) list.push({ id: 'megax', label: 'Mega X', group: 'mega' });
+		if (a.canMegaEvoY) list.push({ id: 'megay', label: 'Mega Y', group: 'mega' });
+		if (a.canUltraBurst) list.push({ id: 'ultra', label: 'Ultra Burst', group: 'ultra' });
+		if (a.zMoves && a.zMoves.some(Boolean)) list.push({ id: 'zmove', label: 'Z-Move', group: 'zmove' });
+		if (a.canDynamax) list.push({ id: 'dynamax', label: a.gigantamax ? 'Gigantamax' : 'Dynamax', group: 'dynamax' });
+		return list.filter(function (g) { return !ui.used[g.group]; });
+	}
+
+	function cycleGimmick(b) {
+		var a = b.request.active[ui.slot];
+		if (!a) return;
+		var list = gimmicks(a);
+		if (!list.length) return;
+		var i = list.findIndex(function (g) { return g.id === ui.gimmick; });
+		ui.gimmick = i + 1 < list.length ? list[i + 1].id : '';
+		render();
+	}
+
+	function shownMoves(a) {
+		if (ui.gimmick === 'zmove' && a.zMoves) return a.zMoves.map(function (z, i) { return z || Object.assign({}, a.moves[i], { disabled: true }); });
+		if ((ui.gimmick === 'dynamax' || !a.canDynamax && a.maxMoves) && a.maxMoves) return a.maxMoves;
+		return a.moves;
+	}
+
+	function chooseMove(b, move) {
+		var a = b.request.active[ui.slot];
+		var choice = 'move ' + move.index;
+		if (ui.gimmick) choice += ' ' + ui.gimmick;
+		var g = gimmicks(a).find(function (x) { return x.id === ui.gimmick; });
+		if (b.gameType !== 'singles' && TARGETED[move.target]) {
+			ui.pending = { choice: choice, target: move.target, name: move.name, group: g && g.group };
+			ui.step = 'target';
+			render();
+			return;
+		}
+		if (g) ui.used[g.group] = true;
+		commit(b, choice);
+	}
+
+	function chooseTarget(b, loc) {
+		var p = ui.pending;
+		if (p.group) ui.used[p.group] = true;
+		commit(b, p.choice + ' ' + loc);
+	}
+
+	/** Undo the previous slot's choice (doubles/triples). */
+	function stepBack(b) {
+		if (ui.step === 'target' || ui.step === 'switch') { ui.step = 'main'; ui.pending = null; render(); return true; }
+		var choices = ui.choices.slice(0, ui.slot);
+		for (var i = ui.slot - 1; i >= 0; i--) {
+			if (choices[i] === 'pass') continue;
+			ui.slot = i;
+			ui.choices = choices.slice(0, i);
+			ui.used = usedGimmicks(ui.choices);
+			ui.gimmick = '';
+			ui.step = 'main';
+			render();
+			return true;
+		}
+		return false;
+	}
+
+	function usedGimmicks(choices) {
+		var used = {};
+		choices.forEach(function (c) {
+			if (/ terastallize\b/.test(c)) used.tera = true;
+			if (/ mega[xy]?\b/.test(c)) used.mega = true;
+			if (/ ultra\b/.test(c)) used.ultra = true;
+			if (/ zmove\b/.test(c)) used.zmove = true;
+			if (/ dynamax\b/.test(c)) used.dynamax = true;
+		});
+		return used;
+	}
+
+	/* ---------- views ---------- */
+
+	function renderTabs(b) {
+		if (!state.battles || state.battles.length < 2) return null;
+		return h('div', { class: 'tabs' }, state.battles.map(function (x) {
+			return h('button', {
+				class: x.id === b.id ? 'cur' : '', 'data-key': 'tab:' + x.id,
+				onclick: function () { selectBattle(x.id); },
+			}, actionable(x) ? h('span', { class: 'dot' }) : null, shortTitle(x));
+		}));
+	}
+
+	function shortTitle(b) {
+		if (b.mine && b.foe && b.foe.name) return 'vs ' + b.foe.name;
+		return (b.title || b.id).replace(/^.*?:\s*/, '');
+	}
+
+	function renderHeader(b) {
+		return h('div', { class: 'header' },
+			h('span', { class: 'title', text: b.title }),
+			b.turn ? h('span', { class: 'turn', text: 'Turn ' + b.turn }) : null);
+	}
+
+	function renderField(b) {
+		var wrap = h('div', { style: 'display:flex;flex-direction:column;gap:6px;flex:none' });
+		if (b.foe && b.foe.active.some(Boolean)) {
+			wrap.appendChild(h('div', { class: 'field' }, b.foe.active.slice().reverse().map(function (p) { return monCard(p, true); })));
+		}
+		if (!b.mine && b.me && b.me.active.some(Boolean)) {
+			wrap.appendChild(h('div', { class: 'field' }, b.me.active.map(function (p) { return monCard(p, false); })));
+		}
+		return wrap.childNodes.length ? wrap : null;
+	}
+
+	function renderMoves(b) {
+		var req = b.request;
+		var a = req.active[ui.slot];
+		var mon = req.team[ui.slot];
+		var frag = [];
+		var multi = req.active.length > 1;
+		frag.push(h('div', { class: 'prompt' },
+			h('span', null, multi ? 'Slot ' + (ui.slot + 1) + '/' + req.active.length + ' · ' : '', 'What will ', h('b', { text: mon ? mon.name : '?' }), ' do?'),
+			mon ? h('span', { text: Math.round(mon.hp / (mon.maxhp || 1) * 100) + '% HP' }) : null));
+		var moves = shownMoves(a);
+		var grid = h('div', { class: 'moves' });
+		moves.forEach(function (m) {
+			var color = TYPE_COLORS[m.type] || '#555';
+			var effs = (m.eff || []).filter(function (e) { return e !== null; });
+			var effNodes = b.gameType === 'singles' ? [effLabel(effs[0])] : (m.eff || []).map(effLabel);
+			grid.appendChild(h('button', {
+				class: 'move', 'data-key': 'move:' + m.index, disabled: m.disabled,
+				style: 'border-color:' + color + ';background:linear-gradient(160deg,' + color + '55,' + color + '22)',
+				onclick: function () { chooseMove(b, m); },
+			},
+			h('div', { class: 'mname', text: m.name }),
+			h('div', { class: 'mrow' },
+				h('span', null, typeBadge(m.type), ' ', h('span', { text: m.category + (m.bp ? ' ' + m.bp : '') })),
+				h('span', null, effNodes)),
+			h('div', { class: 'mrow' },
+				h('span', { class: 'pp', text: m.maxpp ? 'PP ' + m.pp + '/' + m.maxpp : '' }),
+				h('span', { text: m.accuracy ? (m.accuracy === '—' ? '—' : m.accuracy + '%') : '' }))));
+		});
+		frag.push(grid);
+		var acts = h('div', { class: 'actions' });
+		gimmicks(a).forEach(function (g) {
+			acts.appendChild(h('button', {
+				class: ui.gimmick === g.id ? 'on' : '', 'data-key': 'g:' + g.id,
+				onclick: function () { ui.gimmick = ui.gimmick === g.id ? '' : g.id; render(); },
+			}, g.label, ui.gimmick === g.id ? ' ✓' : ''));
+		});
+		var canSwitch = !a.trapped && switchTargets(b).length > 0;
+		acts.appendChild(h('button', {
+			'data-key': 'toswitch', disabled: !canSwitch,
+			onclick: function () { ui.step = 'switch'; render(); },
+		}, a.trapped ? 'Trapped' : 'Switch (Y)'));
+		if (ui.slot > 0) acts.appendChild(h('button', { 'data-key': 'back', onclick: function () { stepBack(b); } }, 'Back'));
+		frag.push(acts);
+		return frag;
+	}
+
+	function renderSwitch(b, forced) {
+		var req = b.request;
+		var mon = req.team[ui.slot];
+		var reviving = mon && mon.reviving;
+		var valid = switchTargets(b);
+		var frag = [];
+		frag.push(h('div', { class: 'prompt' },
+			h('span', null, reviving ? 'Choose a fainted Pokémon to revive' : forced ? 'Choose a Pokémon to send in' : h('span', null, 'Switch out ', h('b', { text: mon ? mon.name : '' }))),
+			forced ? null : h('span', { text: 'B: back' })));
+		var grid = h('div', { class: 'grid' });
+		req.team.forEach(function (p, i) {
+			var ok = valid.indexOf(i) >= 0;
+			grid.appendChild(h('button', {
+				class: 'pick' + (p.active ? ' isactive' : ''), 'data-key': 'sw:' + i, disabled: !ok,
+				onclick: function () { commit(b, 'switch ' + (i + 1)); },
+			},
+			iconEl(p.icon),
+			h('div', { class: 'info' },
+				h('div', { class: 'name', style: 'font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis', text: p.name }),
+				hpBar(p.hp, p.maxhp),
+				h('div', { class: 'sub', style: 'font-size:11px;color:var(--dim);display:flex;gap:3px;flex-wrap:wrap' },
+					h('span', { text: p.fainted ? '' : p.hp + '/' + p.maxhp }), statusBadge(p), (p.types || []).map(typeBadge)))));
+		});
+		frag.push(grid);
+		if (!forced) frag.push(h('div', { class: 'actions' }, h('button', { 'data-key': 'tomoves', onclick: function () { ui.step = 'main'; render(); } }, 'Back to moves')));
+		return frag;
+	}
+
+	function renderTargets(b) {
+		var p = ui.pending;
+		var t = p.target;
+		var self = ui.slot;
+		var foeRow = h('div', { class: 'row' });
+		var allyRow = h('div', { class: 'row' });
+		var foes = b.foe ? b.foe.active.slice() : [];
+		while (foes.length < b.request.active.length) foes.push(null);
+		var allies = b.request.team.slice(0, b.request.active.length);
+		var foeOK = t !== 'adjacentAlly' && t !== 'adjacentAllyOrSelf';
+		foes.map(function (f, i) { return { f: f, i: i }; }).reverse().forEach(function (o) {
+			foeRow.appendChild(h('button', {
+				// The client may still be animating a switch-in, so unknown slots stay selectable.
+				'data-key': 'tg:' + (o.i + 1), disabled: !foeOK || o.f && o.f.fainted,
+				onclick: function () { chooseTarget(b, o.i + 1); },
+			}, o.f ? o.f.name : 'Foe ' + (o.i + 1)));
+		});
+		allies.forEach(function (al, j) {
+			var isSelf = j === self;
+			var ok = t === 'adjacentAllyOrSelf' ? true : t === 'adjacentFoe' ? false : !isSelf;
+			if (al && al.fainted) ok = false;
+			allyRow.appendChild(h('button', {
+				'data-key': 'tg:' + -(j + 1), disabled: !ok,
+				onclick: function () { chooseTarget(b, -(j + 1)); },
+			}, (al ? al.name : 'empty') + (isSelf ? ' (self)' : '')));
+		});
+		return [
+			h('div', { class: 'prompt' }, h('span', null, 'Target for ', h('b', { text: p.name })), h('span', { text: 'B: back' })),
+			h('div', { class: 'targets' }, foeRow, allyRow),
+		];
+	}
+
+	function renderTeamPreview(b) {
+		var req = b.request;
+		var size = req.maxChosenTeamSize || req.team.length;
+		var frag = [];
+		frag.push(h('div', { class: 'prompt' },
+			h('span', null, 'Team preview — pick your ', h('b', { text: size < req.team.length ? size + ' Pokémon' : 'lead order' })),
+			h('span', { text: ui.order.length + '/' + size })));
+		if (b.foe && b.foe.team.length) {
+			frag.push(h('div', { class: 'foeteam' }, h('span', { class: 'sub', style: 'color:var(--dim);font-size:12px;align-self:center;margin-right:6px', text: 'Opponent:' }),
+				b.foe.team.map(function (p) { return p ? iconEl(p.icon) : null; })));
+		}
+		var grid = h('div', { class: 'grid' });
+		req.team.forEach(function (p, i) {
+			var pos = ui.order.indexOf(i);
+			grid.appendChild(h('button', {
+				class: 'pick', 'data-key': 'tp:' + i,
+				onclick: function () {
+					if (pos >= 0) ui.order.splice(pos, 1);
+					else if (ui.order.length < size) ui.order.push(i);
+					if (ui.order.length === size && size === req.team.length) { sendTeam(b); return; }
+					// Move the highlight on so repeated A presses build the order.
+					if (ui.order.length >= size) {
+						pendingFocus = 'tp:go';
+					} else if (pos < 0) {
+						for (var k = 1; k <= req.team.length; k++) {
+							var next = (i + k) % req.team.length;
+							if (ui.order.indexOf(next) < 0) { pendingFocus = 'tp:' + next; break; }
+						}
+					}
+					render();
+				},
+			},
+			iconEl(p.icon),
+			h('div', { class: 'info' },
+				h('div', { style: 'font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis', text: p.name }),
+				h('div', { style: 'display:flex;gap:3px;flex-wrap:wrap;margin-top:2px' }, (p.types || []).map(typeBadge)),
+				p.item ? h('div', { style: 'font-size:11px;color:var(--dim)', text: p.item }) : null),
+			pos >= 0 ? h('span', { class: 'order', text: '' + (pos + 1) }) : null));
+		});
+		frag.push(grid);
+		frag.push(h('div', { class: 'actions' },
+			h('button', { 'data-key': 'tp:reset', disabled: !ui.order.length, onclick: function () { ui.order = []; render(); } }, 'Reset'),
+			h('button', { class: 'primary', 'data-key': 'tp:go', disabled: !ui.order.length, onclick: function () { sendTeam(b); } },
+				ui.order.length >= size ? 'Confirm' : 'Confirm (rest in order)')));
+		return frag;
+	}
+
+	function sendTeam(b) {
+		var order = ui.order.map(function (i) { return i + 1; });
+		b.request.team.forEach(function (_, i) { if (order.indexOf(i + 1) < 0) order.push(i + 1); });
+		send(b, ['team ' + order.join(',')]);
+		render();
+	}
+
+	function renderWaiting(b) {
+		var req = b.request;
+		var canUndo = b.waiting && req && req.kind !== 'wait' && !req.noCancel;
+		if (b.error && req && req.kind !== 'wait') {
+			return [h('div', { class: 'center' },
+				h('div', { class: 'big', text: 'Choice rejected' }),
+				h('button', { class: 'primary', 'data-key': 'retry', onclick: function () {
+					ui = freshUI(null);
+					post({ t: 'reset', room: b.id });
+				} }, 'Choose again'))];
+		}
+		return [h('div', { class: 'center' },
+			h('div', { class: 'spin' }),
+			h('div', { class: 'big', text: 'Waiting for opponent…' }),
+			canUndo ? h('button', { 'data-key': 'undo', onclick: function () { post({ t: 'undo', room: b.id }); } }, 'Change choice (undo)') : null)];
+	}
+
+	function renderEnded(b) {
+		var r = b.result;
+		var text = 'Battle over';
+		if (r && r.tie) text = 'Tie!';
+		else if (r && r.winner) text = (b.mine && b.me && r.winner === b.me.name) ? 'You won!' : r.winner + ' won';
+		return [h('div', { class: 'center' },
+			h('div', { class: 'big', text: text }),
+			h('div', { class: 'actions', style: 'width:100%;max-width:420px' },
+				h('button', { 'data-key': 'leave', onclick: function () { post({ t: 'leave', room: b.id }); } }, 'Close battle'),
+				h('button', { class: 'primary', 'data-key': 'top', onclick: function () { post({ t: 'release' }); } }, 'Back to top screen')))];
+	}
+
+	function renderSpectating(b) {
+		return [h('div', { class: 'center' },
+			h('div', { class: 'big', text: b.mine ? 'Battle in progress' : 'Spectating' }),
+			h('div', { class: 'sub', style: 'color:var(--dim)', text: b.me && b.foe ? b.me.name + ' vs ' + b.foe.name : '' }),
+			b.mine ? null : h('div', { class: 'actions', style: 'width:100%;max-width:420px' },
+				h('button', { 'data-key': 'leave', onclick: function () { post({ t: 'leave', room: b.id }); } }, 'Stop watching')))];
+	}
+
+	var STAT_LABELS = { hp: 'HP', atk: 'Atk', def: 'Def', spa: 'SpA', spd: 'SpD', spe: 'Spe' };
+
+	/** Details of the teambuilder result highlighted on the top screen. */
+	function renderPreview(p) {
+		var head = h('div', { class: 'pv-head' },
+			p.kind === 'pokemon' ? (p.sprite ? h('img', { class: 'pv-sprite', src: p.sprite, alt: '' }) : h('span', { class: 'pv-icon', style: p.icon })) :
+			p.icon ? h('span', { class: 'pv-icon', style: p.icon }) : null,
+			h('div', null,
+				h('div', { class: 'pv-name', text: p.name }),
+				h('div', { class: 'pv-meta' },
+					(p.types || (p.type ? [p.type] : [])).map(typeBadge),
+					p.kind === 'pokemon' && p.tier ? h('span', { text: p.tier }) : null,
+					p.kind === 'move' ? h('span', { text: p.category }) : null,
+					p.kind === 'item' ? h('span', { text: 'Item' }) : null,
+					p.kind === 'ability' ? h('span', { text: 'Ability' }) : null)));
+		var body = [];
+		if (p.kind === 'pokemon') {
+			var stats = h('div', { class: 'pv-stats' });
+			var total = 0;
+			Object.keys(STAT_LABELS).forEach(function (k) {
+				var v = p.stats[k] || 0;
+				total += v;
+				var hue = Math.min(v, 200) * 0.6; // red (low) to green (high)
+				stats.appendChild(h('span', { class: 'lbl', text: STAT_LABELS[k] }));
+				stats.appendChild(h('span', { class: 'val', text: String(v) }));
+				stats.appendChild(h('div', { class: 'bar', style: 'width:' + Math.min(100, v / 2) + '%;background:hsl(' + hue + ',75%,50%)' }));
+			});
+			stats.appendChild(h('span', { class: 'lbl', text: 'BST' }));
+			stats.appendChild(h('span', { class: 'val', text: String(total) }));
+			stats.appendChild(h('span'));
+			body.push(stats, h('div', { class: 'pv-abil' }, p.abilities.map(function (a) {
+				return h('div', null, h('b', { text: a.name }), a.slot ? h('i', { text: a.slot }) : null, a.desc);
+			})));
+		} else if (p.kind === 'move') {
+			body.push(h('div', { class: 'pv-nums' },
+				h('div', null, h('b', { text: p.bp ? String(p.bp) : '—' }), 'Power'),
+				h('div', null, h('b', { text: p.accuracy ? p.accuracy + '%' : '—' }), 'Accuracy'),
+				h('div', null, h('b', { text: String(p.pp) }), 'PP'),
+				p.priority ? h('div', null, h('b', { text: (p.priority > 0 ? '+' : '') + p.priority }), 'Priority') : null));
+		}
+		if (p.desc) body.push(h('div', { class: 'pv-desc', text: p.desc }));
+		return h('div', { class: 'pv' }, head, body);
+	}
+
+	function renderIdle() {
+		var legend = [
+			['D-pad / L-stick', 'move highlight'], ['A', 'select'], ['B', 'back / close popup'],
+			['X', 'chat box (top) · gimmick (panel)'], ['Y', 'home (top) · switch menu (panel)'],
+			['L1 / R1', 'previous / next tab or battle'], ['L2 / R2', 'page scroll'], ['R-stick', 'scroll log'],
+			['Select', 'swap control top ⇄ bottom'], ['Start', 'app menu'],
+		];
+		var rows = [];
+		legend.forEach(function (l) { rows.push(h('kbd', { text: l[0] }), h('span', { text: l[1] })); });
+		var who = state && state.user ? (state.named ? 'Logged in as ' + state.user : 'Guest: ' + state.user) : 'Connecting…';
+		return [h('div', { class: 'center' },
+			h('div', { class: 'big', text: 'No active battle' }),
+			h('div', { class: 'sub', style: 'color:var(--dim)', text: who }),
+			h('div', { class: 'legend' }, rows))];
+	}
+
+	function renderFooter(b) {
+		var f = h('div', { class: 'footer' });
+		if (b && b.mine && !b.ended) {
+			f.appendChild(h('button', {
+				class: b.timer ? 'on' : '', 'data-key': 'timer',
+				onclick: function () { post({ t: 'cmd', room: b.id, text: '/timer ' + (b.timer ? 'off' : 'on') }); },
+			}, b.timer ? 'Timer: on' : 'Timer: off'));
+			var armed = forfeitArmed > Date.now();
+			f.appendChild(h('button', {
+				class: armed ? 'danger' : '', 'data-key': 'forfeit',
+				onclick: function () {
+					if (forfeitArmed > Date.now()) { forfeitArmed = 0; post({ t: 'cmd', room: b.id, text: '/forfeit' }); }
+					else { forfeitArmed = Date.now() + 3000; setTimeout(render, 3100); }
+					render();
+				},
+			}, armed ? 'Press again to forfeit' : 'Forfeit'));
+		}
+		f.appendChild(h('span', { class: 'spacer' }));
+		if (state && state.overlay !== null && state.overlay !== undefined) {
+			f.appendChild(h('button', {
+				class: state.overlay ? 'on' : '', 'data-key': 'overlay',
+				onclick: function () { post({ t: 'overlay' }); },
+			}, state.overlay ? 'Log ✕' : 'Log ☰'));
+		}
+		f.appendChild(h('button', { 'data-key': 'menu', onclick: function () { post({ t: 'menu' }); } }, 'Menu'));
+		f.appendChild(h('button', { 'data-key': 'release', onclick: function () { post({ t: 'release' }); } }, 'Top ▲'));
+		return f;
+	}
+
+	function render() {
+		var prevKey = nav.current && nav.current.getAttribute('data-key');
+		var b = currentBattle();
+		var key = b && b.request ? b.id + ':' + b.request.rqid : b ? b.id : null;
+		if (key !== ui.key) {
+			ui = freshUI(key);
+			if (actionable(b) && b.request.kind !== 'team' && skip(b)) send(b, ui.choices);
+		}
+
+		var nodes = [];
+		// A decision in a battle always wins over the teambuilder preview.
+		var showPreview = preview && state && state.cur === 'teambuilder' && !actionable(b);
+		if (showPreview) {
+			nodes = [renderPreview(preview)];
+		} else if (!b) {
+			nodes = renderIdle();
+		} else {
+			var main;
+			if (b.broken) main = [h('div', { class: 'center', text: 'Could not read battle: ' + b.broken })];
+			else if (b.ended) main = renderEnded(b);
+			else if (!b.mine || !b.request) main = renderSpectating(b);
+			else if (b.waiting || ui.step === 'sent') main = renderWaiting(b);
+			else if (b.request.kind === 'team') main = renderTeamPreview(b);
+			else if (b.request.kind === 'switch') main = renderSwitch(b, true);
+			else if (ui.step === 'switch') main = renderSwitch(b, false);
+			else if (ui.step === 'target') main = renderTargets(b);
+			else main = renderMoves(b);
+			nodes = [renderTabs(b), renderHeader(b), renderField(b),
+				b.error ? h('div', { class: 'error', text: b.error }) : null,
+				h('div', { class: 'main' }, main)];
+		}
+		app.textContent = '';
+		nodes.forEach(function (n) { if (n) app.appendChild(n); });
+		app.appendChild(renderFooter(showPreview ? null : b));
+
+		// Keep the highlight in place on refreshes, but jump to the obvious control on a new step.
+		var sig = (b ? b.id : '') + '|' + ui.key + '|' + ui.step + '|' + ui.slot + '|' + (b && (b.waiting || b.ended));
+		var wanted = pendingFocus || (sig === lastSig && prevKey);
+		var again = wanted && app.querySelector('[data-key="' + CSS.escape(wanted) + '"]:not([disabled])');
+		lastSig = sig;
+		pendingFocus = '';
+		if (again) nav.set(again);
+		else nav.focusFirst();
+		if (!touched) nav.show();
+
+		// Ask for gamepad control when a fresh decision is waiting on this battle.
+		var want = actionable(b) ? key : '';
+		if (want && want !== lastActionable) post({ t: 'wantFocus' });
+		lastActionable = want;
+	}
+
+	function selectBattle(id) {
+		selected = id;
+		post({ t: 'focus', room: id });
+		render();
+	}
+
+	var nav = ThorNav.create({
+		scope: function () { return app; },
+		preferred: function () {
+			return app.querySelector('.move:not([disabled]), .pick:not([disabled]), .targets button:not([disabled]), .center button:not([disabled])');
+		},
+	});
+
+	window.Panel = {
+		preview: function (p) {
+			preview = p;
+			render();
+		},
+		update: function (s) {
+			state = s;
+			// Starting a new battle on top should pull the panel along.
+			if (selected && s.cur && s.cur !== selected && s.battles.some(function (b) { return b.id === s.cur; })) selected = null;
+			render();
+		},
+		setActive: function (on) {
+			document.body.classList.toggle('active', !!on);
+			if (on) nav.show();
+		},
+		input: function (button) {
+			touched = false;
+			nav.show();
+			var b = currentBattle();
+			switch (button) {
+			case 'up': case 'down': case 'left': case 'right':
+				nav.move(button);
+				break;
+			case 'a':
+				if (nav.current) nav.current.click();
+				else nav.focusFirst();
+				break;
+			case 'b':
+				if (b && b.request && !b.waiting && stepBack(b)) return;
+				post({ t: 'release' });
+				break;
+			case 'x':
+				if (b && actionable(b) && b.request.kind === 'move' && ui.step === 'main') cycleGimmick(b);
+				break;
+			case 'y':
+				if (b && actionable(b) && b.request.kind === 'move' && ui.step !== 'target' &&
+					(ui.step === 'switch' || !b.request.active[ui.slot].trapped && switchTargets(b).length)) {
+					ui.step = ui.step === 'switch' ? 'main' : 'switch';
+					render();
+				}
+				break;
+			case 'l1': case 'r1': {
+				if (!state || !state.battles || state.battles.length < 2) return;
+				var list = state.battles;
+				var i = list.findIndex(function (x) { return b && x.id === b.id; });
+				var next = list[(i + (button === 'l1' ? -1 : 1) + list.length) % list.length];
+				selectBattle(next.id);
+				break;
+			}
+			}
+		},
+	};
+
+	document.addEventListener('pointerdown', function () {
+		touched = true;
+		nav.hide();
+	}, true);
+	render();
+	post({ t: 'panelReady' });
+})();
+</script>
+</body>
+</html>
